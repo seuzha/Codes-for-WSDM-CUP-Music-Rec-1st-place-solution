@@ -7,6 +7,8 @@ member = pd.read_csv('../temporal_data/members_id.csv')
 song_origin = pd.read_csv('../temporal_data/songs_id.csv')
 song_extra = pd.read_csv('../temporal_data/songs_extra_id.csv')
 
+print('finish read files.')
+
 song = pd.DataFrame({'song_id': range(max(train.song_id.max(), test.song_id.max())+1)})
 song = song.merge(song_origin, on='song_id', how='left')
 song = song.merge(song_extra, on='song_id', how='left')
@@ -14,6 +16,7 @@ song = song.merge(song_extra, on='song_id', how='left')
 data = train[['msno', 'song_id']].append(test[['msno', 'song_id']])
 
 ## member_cnt
+## litez: check the apply func
 mem_rec_cnt = data.groupby(by='msno').count()['song_id'].to_dict()
 member['msno_rec_cnt'] = member['msno'].apply(lambda x: mem_rec_cnt[x])
 
@@ -21,6 +24,7 @@ member['bd'] = member['bd'].apply(lambda x: np.nan if x <= 0 or x >= 75 else x)
 
 ## song_cnt
 artist_song_cnt = song.groupby(by='artist_name').count()['song_id'].to_dict()
+#litez: what will happen for 'artist_name' (have nan value) during groupby
 song['artist_song_cnt'] = song['artist_name'].apply(lambda x: artist_song_cnt[x] if not np.isnan(x) else np.nan)
 
 composer_song_cnt = song.groupby(by='composer').count()['song_id'].to_dict()
@@ -65,6 +69,8 @@ for feat in dummy_feat:
     feat_dummies['msno'] = concat['msno'].values
     feat_dummies = feat_dummies.groupby('msno').mean()
     feat_dummies['msno'] = feat_dummies.index
+    # the following merge has problems
+    # merge with mix column and index
     member = member.merge(feat_dummies, on='msno', how='left')
 
 train_temp = train.merge(member, on='msno', how='left')
@@ -85,6 +91,7 @@ train['msno_source_type_prob'] = train_temp[[col for col in train_temp.columns i
 test['msno_source_type_prob'] = test_temp[[col for col in test_temp.columns if 'source_type' in col]].apply(lambda x: \
         x['msno_source_type_%d'%x['source_type']], axis=1)
 
+print('prepare to output to csv')
 ## to_csv
 features = ['msno_rec_cnt']
 for feat in features:

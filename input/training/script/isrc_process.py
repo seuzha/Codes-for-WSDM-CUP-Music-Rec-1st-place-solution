@@ -12,6 +12,9 @@ data = train[['msno', 'song_id']].append(test[['msno', 'song_id']])
 
 print('Data loaded.')
 
+# litez. fill na in song['isrc']
+song = song.dropna(subset = ['isrc'])
+
 ## isrc process
 isrc = song['isrc']
 song['cc'] = isrc.str.slice(0, 2)

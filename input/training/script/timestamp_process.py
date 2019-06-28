@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from collections import defaultdict
+from tqdm import tqdm
 
 ## load the data
 tr = pd.read_csv('../temporal_data/train_id_cnt_svd.csv')
@@ -13,8 +14,10 @@ concat = tr[['msno', 'song_id']].append(te[['msno', 'song_id']])
 concat['timestamp'] = range(len(concat))
 
 ## windows_based count
-window_sizes = [10, 25, 500, 5000, 10000, 50000]
-
+# window_sizes = [10, 25, 500, 5000, 10000, 50000]
+#litez: bottleneck for computation spd
+window_sizes = [10, 25]
+# litez: check wheter msno_list and song_list have been sorted by 'time'
 msno_list = concat['msno'].values
 song_list = concat['song_id'].values
 
@@ -28,16 +31,16 @@ for window_size in window_sizes:
     song_before_cnt = np.zeros(len(concat))
     msno_after_cnt = np.zeros(len(concat))
     song_after_cnt = np.zeros(len(concat))
-    for i in range(len(concat)):
+    for i in tqdm(range(len(concat))):
         msno_before_cnt[i], msno_after_cnt[i] = get_window_cnt(msno_list, i, window_size)
         song_before_cnt[i], song_after_cnt[i] = get_window_cnt(song_list, i, window_size)
     concat['msno_%d_before_cnt'%window_size] = msno_before_cnt
     concat['song_%d_before_cnt'%window_size] = song_before_cnt
     concat['msno_%d_after_cnt'%window_size] = msno_after_cnt
     concat['song_%d_after_cnt'%window_size] = song_after_cnt
-    
-    print('Window size for %d done.'%window_size)
 
+    print('Window size for %d done.'%window_size)
+print('check concat:', concat.head())
 ## till_now count
 msno_dict = defaultdict(lambda: 0)
 song_dict = defaultdict(lambda: 0)
@@ -47,7 +50,7 @@ song_till_now_cnt = np.zeros(len(concat))
 for i in range(len(concat)):
     msno_till_now_cnt[i] = msno_dict[msno_list[i]]
     msno_dict[msno_list[i]] += 1
-    
+
     song_till_now_cnt[i] = song_dict[song_list[i]]
     song_dict[song_list[i]] += 1
 
@@ -64,7 +67,7 @@ def timestamp_map(x):
         x = (x - 7377417.0) / (9934207.0 - 7377417.0) * (1488211200.0 - 1484236800.0) + 1484236800.0
 
     return x
-    
+
 concat['timestamp'] = concat['timestamp'].apply(timestamp_map)
 
 msno_mean = concat.groupby(by='msno').mean()['timestamp'].to_dict()

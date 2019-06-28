@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 from scipy.sparse.linalg import svds
+from tqdm import tqdm
 
 ## load the data
 tr = pd.read_csv('../temporal_data/train_id_cnt.csv')
@@ -24,6 +25,7 @@ msno = concat['msno'].values
 song_id = concat['song_id'].values
 
 rating = sparse.coo_matrix((data, (msno, song_id)))
+#what is the purpose for the following?
 rating = (rating > 0) * 1.0
 
 [u, s, vt] = svds(rating, k=n_component)
@@ -52,6 +54,7 @@ print(len(concat))
 data = np.ones(len(concat))
 rating_tmp = sparse.coo_matrix((data, (msno, artist)))
 
+# litez: the motivation behind such transform
 rating = np.log1p(rating_tmp) * 0.3 + (rating_tmp > 0) * 1.0
 
 [u, s, vt] = svds(rating, k=n_component)
@@ -88,17 +91,22 @@ song_artist_embeddings = song[song_cols].values
 train_dot = np.zeros((len(tr), 2))
 test_dot = np.zeros((len(te), 2))
 
-for i in range(len(tr)):
+# litez: the following is essentially matrix multiplication
+# The choice of for loop is to limit memory consumption
+for i in tqdm(range(len(tr))):
     msno_idx = tr['msno'].values[i]
     song_idx = tr['song_id'].values[i]
-    
+
     train_dot[i, 0] = np.dot(member_embeddings[msno_idx], np.dot(s_song, song_embeddings[song_idx]))
     train_dot[i, 1] = np.dot(member_artist_embeddings[msno_idx], np.dot(s_artist, song_artist_embeddings[song_idx]))
 
-for i in range(len(te)):
+    if i == 0:
+        print(msno_idx, song_idx,  member_embeddings[msno_idx], s_song, song_embeddings[song_idx])
+
+for i in tqdm(range(len(te))):
     msno_idx = te['msno'].values[i]
     song_idx = te['song_id'].values[i]
-    
+
     test_dot[i, 0] = np.dot(member_embeddings[msno_idx], np.dot(s_song, song_embeddings[song_idx]))
     test_dot[i, 1] = np.dot(member_artist_embeddings[msno_idx], np.dot(s_artist, song_artist_embeddings[song_idx]))
 
@@ -109,6 +117,7 @@ te['song_embeddings_dot'] = test_dot[:, 0]
 te['artist_embeddings_dot'] = test_dot[:, 1]
 
 ## write to files
+print('ready to output.')
 tr.to_csv('../temporal_data/train_id_cnt_svd.csv', index=False)
 te.to_csv('../temporal_data/test_id_cnt_svd.csv', index=False)
 member.to_csv('../temporal_data/members_id_cnt_svd.csv', index=False)
